@@ -1082,7 +1082,12 @@ def register_child():
 
     result = st.session_state.get("registration_result")
     if result:
-        token, qr_png = result
+        # Rebuild the QR using the current configured base URL, including after a URL change.
+        token = result[0] if isinstance(result, tuple) else result
+        qr_image = qrcode.make(f"{BASE_URL.rstrip('/')}/?w={token}")
+        qr_buffer = BytesIO()
+        qr_image.save(qr_buffer, format="PNG")
+        qr_png = qr_buffer.getvalue()
         st.success("Registration saved. Keep this QR code with the caregiver.")
         st.caption(f"Wristband ID: {token}")
         st.image(qr_png, caption="Private child wristband QR code", width=240)

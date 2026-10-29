@@ -353,6 +353,10 @@ def live_board():
     st.write(f"**Caregiver:** {display_caregiver or 'Not provided'}")
     if st.session_state.get("role") != "volunteer":
         st.write(f"**Caregiver phone:** {phone or 'Not provided'}")
+    if token:
+        photo_rows = q("SELECT photo FROM children WHERE token = ?", (token,))
+        if photo_rows and photo_rows[0][0]:
+            st.image(photo_rows[0][0], caption="Registered child photo", width=240)
 
     st.subheader("Zone search")
     staff_users = [username for username, account in staff_accounts().items() if account.get("role") == "staff"]
@@ -458,7 +462,7 @@ def report_missing():
                 st.error("Enter an 8-character wristband ID using letters and numbers.")
             else:
                 child_rows = q(
-                    """SELECT token, alias, age, height, descr, caregiver, phone
+                    """SELECT token, alias, age, height, descr, caregiver, phone, photo
                        FROM children WHERE token = ?""",
                     (token,),
                 )
@@ -479,7 +483,7 @@ def report_missing():
                             timespec="minutes"
                         ),
                     )
-                    st.session_state.report_incident_result = (incident_id, code)
+                    st.session_state.report_incident_result = (incident_id, code, child[7])
 
     with manual_tab:
         with st.form("report_missing_manual_form"):
@@ -517,8 +521,11 @@ def report_missing():
 
     result = st.session_state.get("report_incident_result")
     if result:
-        incident_id, code = result
+        incident_id, code = result[:2]
+        child_photo = result[2] if len(result) > 2 else None
         st.success(f"Incident opened. Give this code to the caregiver: **{code}**")
+        if child_photo:
+            st.image(child_photo, caption="Registered child photo", width=240)
 
 
 def create_incident(token, alias, age, height, descr, caregiver, phone, last_zone, last_time):
@@ -717,8 +724,8 @@ def wristband_lookup():
     st.write(f"**Caregiver:** {redact_phone_numbers(caregiver) or 'Not provided'}")
     if st.session_state.get("role") != "volunteer":
         st.write(f"**Caregiver phone:** {phone or 'Not provided'}")
-        if photo:
-            st.image(photo, caption="Registered child photo")
+    if photo:
+        st.image(photo, caption="Registered child photo")
 
 
 def reunify():
@@ -1102,7 +1109,7 @@ def register_child():
 def privacy_notice():
     st.header("Privacy notice")
     st.write("We collect a child nickname, age, height, clothing and identifying features, caregiver name and phone number, and an optional photo. A wristband token and event search updates are also stored.")
-    st.write("Lead and staff accounts can access registered details. Volunteers do not see caregiver phone numbers or photos. Public pages show only the minimum information needed to alert staff and never display names, phone numbers, or photos.")
+    st.write("Lead, staff, and volunteer accounts can view registered child details and photos. Caregiver phone numbers are available to lead and staff accounts. Public pages show only the minimum information needed to alert staff and never display names, phone numbers, or photos.")
     st.write("When staff confirm reunification, the linked child registration (including its photo) and related help requests are deleted. Other records are automatically eligible for deletion after the configured retention period (48 hours by default); a lead can also delete all personal data from Audit & privacy.")
 
 
